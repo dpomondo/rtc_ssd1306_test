@@ -17,11 +17,11 @@
 #include "hardware/i2c.h"
 #include "hardware/rtc.h"
 /* #include "hardware/watchdog.h" */
-#include "include/bmp280_i2c/bmp280_i2c.h"
-#include "include/eeprom/25LC320A.h"
-#include "include/ntp_request/ntp_request.h"
-#include "include/pico-ssd1306/ssd1306.h"
-#include "rtc_ssd1306_test.h"
+#include "libraries/bmp280_i2c/bmp280_i2c.h"
+#include "libraries/eeprom/25LC320A.h"
+#include "libraries/ntp_request/ntp_request.h"
+#include "libraries/pico-ssd1306/ssd1306.h"
+#include "include/rtc_ssd1306_test.h"
 
 struct bmp280_calib_param params;
 struct temperature_struct bmp_readings;

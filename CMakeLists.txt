@@ -30,10 +30,10 @@ pico_sdk_init()
 add_executable(rtc_ssd1306_test "")
 add_subdirectory(src)
 # add_subdirectory(include)
-add_subdirectory(include/pico-ssd1306)
-add_subdirectory(include/ntp_request)
-add_subdirectory(include/bmp280_i2c)
-add_subdirectory(include/eeprom)
+add_subdirectory(libraries/pico-ssd1306)
+add_subdirectory(libraries/ntp_request)
+add_subdirectory(libraries/bmp280_i2c)
+add_subdirectory(libraries/eeprom)
 
 pico_set_program_name(rtc_ssd1306_test "rtc_ssd1306_test")
 pico_set_program_version(rtc_ssd1306_test "0.1")
@@ -48,6 +48,7 @@ target_link_libraries(rtc_ssd1306_test
 # Add the standard include files to the build
 target_include_directories(rtc_ssd1306_test PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}
+  ${CMAKE_CURRENT_LIST_DIR}/include
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
 )
 
@@ -58,6 +59,7 @@ target_link_libraries(rtc_ssd1306_test
         hardware_rtc
         hardware_i2c
         hardware_spi
+        hardware_timer
         bmp280_i2c        
         ntp_request
         pico-ssd1306

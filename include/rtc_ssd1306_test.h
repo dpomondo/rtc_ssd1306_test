@@ -9,9 +9,11 @@
 #include "lwip/dns.h"
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
-#include "include/ntp_request/ntp_request.h"
-#include "include/pico-ssd1306/ssd1306.h"
-#include "include/pico-ssd1306/example/acme_5_outlines_font.h"
+#include "libraries/ntp_request/ntp_request.h"
+#include "libraries/pico-ssd1306/ssd1306.h"
+// #include "ntp_request.h"
+// #include "ssd1306.h"
+#include "libraries/pico-ssd1306/example/acme_5_outlines_font.h"
 #include <stdint.h>
 
 #include "include/credentials.h"
