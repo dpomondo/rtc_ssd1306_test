@@ -9,8 +9,9 @@
 #include "lwip/dns.h"
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
-#include "libraries/ntp_request/ntp_request.h"
-#include "libraries/pico-ssd1306/ssd1306.h"
+#include "ntp_request.h"
+#include "25LC320A.h"
+#include "ssd1306.h"
 // #include "ntp_request.h"
 // #include "ssd1306.h"
 #include "libraries/pico-ssd1306/example/acme_5_outlines_font.h"
@@ -83,6 +84,11 @@ struct temperature_struct
 #define LOOPS_THREE_ADDRESS         0x018
 #define CURRENT_EEPROM_ADDRESS      0x01c
 #define EEPROM_DATA_START           0x020
+
+void read_convert_eeprom(eeprom_t *eeprom);
+void read_eeprom_as_CSV(eeprom_t *eeprom_ptr);
+void bmp_eeprom_set_high_temp(eeprom_t eeprom);
+void bmp_eeprom_set_low_temp(eeprom_t eeprom);
 
 void setup_i2c(void);
 void setup_spi(void);
