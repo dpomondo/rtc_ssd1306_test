@@ -228,7 +228,9 @@ int main() {
       uart_read_blocking(uart0, &c, 1);
     }
     if (c) {
-      printf("\n\treceived from uart0: %d [%c]\n", c, (char)c);
+      if (print_flag == PRINT_ON) {
+        printf("\n\treceived from uart0: %d [%c]\n", c, (char)c);
+      }
       switch (c) {
       case 'P' + 0:
       case 'p' + 0:
@@ -287,13 +289,17 @@ int main() {
         break;
       case 'V' + 0:
       case 'v' + 0:
-        printf("toggle CSV\n");
         if (print_flag != PRINT_CSV) {
-          print_flag = PRINT_CSV;
+          printf("change print mode to CSV\n");
         } 
-        else {
-          print_flag = PRINT_ON;
-        }
+        print_flag = PRINT_CSV;
+        break;
+      case 'X' + 0:
+      case 'x' + 0:
+        if (print_flag == PRINT_CSV) {
+          printf("change print mode to ON\n");
+        } 
+        print_flag = PRINT_ON;
         break;
       case 0:
       default:
@@ -391,6 +397,7 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
   // time_t temp_time_t;
 
   printf("CSV START\n");
+  printf("datetime, temp1\n");
   uint16_t start_address = eeprom_ptr->current_address;
   for (uint16_t index; index < ((4096 - EEPROM_DATA_START) / 8); index++) {
     data = eeprom_get_four_bytes(eeprom_ptr, start_address);
@@ -406,8 +413,9 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
     // temp_time = localtime(&temp_time_t);
     temp_time = tm_from_timestamp(timestamp);
   
-    printf("%s %d %d, %2d:%02d, %d\n", months[temp_time->tm_mon], temp_time->tm_mday,
-            temp_time->tm_year + 1900, temp_time->tm_hour, temp_time->tm_min, data);
+    printf("%s/%d/%d %2d:%02d:%02d, %.2f\n", months[temp_time->tm_mon], temp_time->tm_mday,
+            temp_time->tm_year + 1900, temp_time->tm_hour, temp_time->tm_min, 
+            temp_time->tm_sec, ((float)data / 100) );
   }
   printf("CSV END\n");
 }
