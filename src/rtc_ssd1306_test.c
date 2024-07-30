@@ -17,20 +17,16 @@
 #include "hardware/i2c.h"
 #include "hardware/rtc.h"
 /* #include "hardware/watchdog.h" */
-#include "bmp280_i2c.h"
 #include "25LC320A.h"
+#include "bmp280_i2c.h"
 #include "ntp_request.h"
-#include "ssd1306.h"
 #include "rtc_ssd1306_test.h"
+#include "ssd1306.h"
 
 struct bmp280_calib_param params;
 struct temperature_struct bmp_readings;
 eeprom_t eeprom;
-enum print_flag_types  {
-  PRINT_OFF, 
-  PRINT_ON,
-  PRINT_CSV
-};
+enum print_flag_types { PRINT_OFF, PRINT_ON, PRINT_CSV };
 uint8_t print_flag = PRINT_ON;
 
 int make_current_timestamp(void) {
@@ -39,10 +35,10 @@ int make_current_timestamp(void) {
   return approx_epoch(&t);
 }
 
-struct tm* tm_from_timestamp(int timestamp) {
-    time_t temp_time_t = (time_t)(timestamp - MOUNTAIN_STANDARD_OFFSET +
-                                  DAYLIGHT_SAVINGS_OFFSET);
-    return localtime(&temp_time_t);
+struct tm *tm_from_timestamp(int timestamp) {
+  time_t temp_time_t =
+      (time_t)(timestamp - MOUNTAIN_STANDARD_OFFSET + DAYLIGHT_SAVINGS_OFFSET);
+  return localtime(&temp_time_t);
 }
 
 int main() {
@@ -127,7 +123,7 @@ int main() {
   printf("Dump EEPROM contents:\n");
   eeprom_dump_all(&eeprom);
 
-  // do we start fresh or is the eeprom already full of good juicy data? 
+  // do we start fresh or is the eeprom already full of good juicy data?
   // this is where we try & find out
   int32_t loops_one = eeprom_get_four_bytes(&eeprom, EEPROM_LOOPS_ADDRESS);
   int32_t loops_two = eeprom_get_four_bytes(&eeprom, LOOPS_TWO_ADDRESS);
@@ -157,7 +153,7 @@ int main() {
     // time_t temp_time_t = (time_t)(loops_one - MOUNTAIN_STANDARD_OFFSET +
     //                               DAYLIGHT_SAVINGS_OFFSET);
     // struct tm *temp_time = localtime(&temp_time_t);
-    struct tm* temp_time = tm_from_timestamp(loops_one);
+    struct tm *temp_time = tm_from_timestamp(loops_one);
     printf("data populated from EEPROM, current address is %X\n",
            eeprom.current_address);
     printf("EEPROM started at %2d:%02d, %s %d %d\n", temp_time->tm_hour,
@@ -234,10 +230,9 @@ int main() {
       switch (c) {
       case 'P' + 0:
       case 'p' + 0:
-        if (print_flag == PRINT_CSV) { 
+        if (print_flag == PRINT_CSV) {
           read_eeprom_as_CSV(&eeprom);
-        } 
-        else if (print_flag == PRINT_ON) { 
+        } else if (print_flag == PRINT_ON) {
           printf("****** here's the eeprom! *****\n");
           print_flag = PRINT_OFF;
           eeprom_dump_all(&eeprom);
@@ -246,13 +241,12 @@ int main() {
         break;
       case 'c' + 0:
       case 'C' + 0:
-        if (print_flag == PRINT_CSV) { 
-            read_eeprom_as_CSV(&eeprom);
-        } 
-        else { 
-            print_flag = PRINT_OFF;
-            read_convert_eeprom(&eeprom);
-            print_flag = PRINT_ON;
+        if (print_flag == PRINT_CSV) {
+          read_eeprom_as_CSV(&eeprom);
+        } else {
+          print_flag = PRINT_OFF;
+          read_convert_eeprom(&eeprom);
+          print_flag = PRINT_ON;
         }
         break;
       case 'r' + 0:
@@ -273,9 +267,9 @@ int main() {
         break;
       case 'h' + 0:
       case 'H' + 0:
-        if (_menu_state == 1) { 
+        if (_menu_state == 1) {
           print_flag = PRINT_ON;
-          printf("reset high "); 
+          printf("reset high ");
           bmp_eeprom_set_high_temp(eeprom);
         }
         _menu_state = 0;
@@ -291,14 +285,14 @@ int main() {
       case 'v' + 0:
         if (print_flag != PRINT_CSV) {
           printf("change print mode to CSV\n");
-        } 
+        }
         print_flag = PRINT_CSV;
         break;
       case 'X' + 0:
       case 'x' + 0:
         if (print_flag == PRINT_CSV) {
           printf("change print mode to ON\n");
-        } 
+        }
         print_flag = PRINT_ON;
         break;
       case 0:
@@ -361,7 +355,7 @@ int8_t start_wireless(void) {
 void read_convert_eeprom(eeprom_t *eeprom_ptr) {
   uint32_t data;
   uint32_t timestamp;
-  struct tm* temp_time;
+  struct tm *temp_time;
   // time_t temp_time_t;
 
   printf("\n*********************** converting eeprom contents\n");
@@ -397,7 +391,6 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
   // time_t temp_time_t;
 
   printf("CSV START\n");
-  printf("datetime, temp1\n");
   uint16_t start_address = eeprom_ptr->current_address;
   for (uint16_t index; index < ((4096 - EEPROM_DATA_START) / 8); index++) {
     data = eeprom_get_four_bytes(eeprom_ptr, start_address);
@@ -412,10 +405,10 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
     //                        DAYLIGHT_SAVINGS_OFFSET);
     // temp_time = localtime(&temp_time_t);
     temp_time = tm_from_timestamp(timestamp);
-  
-    printf("%s/%d/%d %2d:%02d:%02d, %.2f\n", months[temp_time->tm_mon], temp_time->tm_mday,
-            temp_time->tm_year + 1900, temp_time->tm_hour, temp_time->tm_min, 
-            temp_time->tm_sec, ((float)data / 100) );
+
+    printf("%s/%d/%d %2d:%02d:%02d, %.2f\n", months[temp_time->tm_mon],
+           temp_time->tm_mday, temp_time->tm_year + 1900, temp_time->tm_hour,
+           temp_time->tm_min, temp_time->tm_sec, ((float)data / 100));
   }
   printf("CSV END\n");
 }
@@ -430,8 +423,8 @@ void rtc_UART_alarm_callback(void) {
   int appr = approx_epoch(&t);
   datetime_to_str(datetime_str, sizeof(datetime_buf), &t);
   if (print_flag == PRINT_ON) {
-    printf("\n*****\n--> %s\t epoch: %d %d bytes loops:%d\n", datetime_str, appr,
-           sizeof(appr), ++loops);
+    printf("\n*****\n--> %s\t epoch: %d %d bytes loops:%d\n", datetime_str,
+           appr, sizeof(appr), ++loops);
   }
 } // end rtc_UART_alarm_callback
 
@@ -452,7 +445,7 @@ void bmp_eeprom_set_high_temp(eeprom_t eeprom) {
                          bmp_readings.high_temp_time);
 
   if (print_flag == PRINT_ON) {
-     printf("\n\told high temp: %d\told time: %d\n\tnew high temp: %d\tnew "
+    printf("\n\told high temp: %d\told time: %d\n\tnew high temp: %d\tnew "
            "time: %d\n",
            temp_temp, temp_time, bmp_readings.high_temperature,
            bmp_readings.high_temp_time);
@@ -468,8 +461,7 @@ void bmp_eeprom_set_low_temp(eeprom_t eeprom) {
   bmp_readings.low_temperature = bmp_readings.temperature;
   bmp_readings.low_temp_time = now;
 
-  uint32_t temp_temp =
-      eeprom_get_four_bytes(&eeprom, EEPROM_LOW_TEMP_ADDRESS);
+  uint32_t temp_temp = eeprom_get_four_bytes(&eeprom, EEPROM_LOW_TEMP_ADDRESS);
   uint32_t temp_time = eeprom_get_four_bytes(&eeprom, EEPROM_LOW_T_TIME);
   eeprom_send_four_bytes(&eeprom, EEPROM_LOW_TEMP_ADDRESS,
                          bmp_readings.low_temperature);
@@ -589,7 +581,7 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
   ssd1306_clear(_disp);
   ssd1306_draw_string(_disp, 1, 0, _scale, buf);
 
-  sprintf(uart_buf, "");  // no more ghost characters
+  sprintf(uart_buf, ""); // no more ghost characters
   switch (_state) {
   case 0:
     sprintf(buf, "%3s %2d %d", months[t.month - 1], t.day, t.year);
@@ -616,7 +608,8 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
   case 3:
     sprintf(buf, "low:  %.2fC", bmp_readings.low_temperature / 100.f);
     // temp_time_t = (time_t)(bmp_readings.low_temp_time -
-    //                        MOUNTAIN_STANDARD_OFFSET + DAYLIGHT_SAVINGS_OFFSET);
+    //                        MOUNTAIN_STANDARD_OFFSET +
+    //                        DAYLIGHT_SAVINGS_OFFSET);
     // temp_time = localtime(&temp_time_t);
     temp_time = tm_from_timestamp(bmp_readings.low_temp_time);
     sprintf(uart_buf, "%s\tfrom %d seconds ago, at %2d:%02d, %s %d %d", buf,
@@ -632,7 +625,8 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
   case 4:
     sprintf(buf, "high: %.2fC", bmp_readings.high_temperature / 100.f);
     // temp_time_t = (time_t)(bmp_readings.high_temp_time -
-    //                        MOUNTAIN_STANDARD_OFFSET + DAYLIGHT_SAVINGS_OFFSET);
+    //                        MOUNTAIN_STANDARD_OFFSET +
+    //                        DAYLIGHT_SAVINGS_OFFSET);
     // temp_time = localtime(&temp_time_t);
     temp_time = tm_from_timestamp(bmp_readings.high_temp_time);
     sprintf(uart_buf, "%s\tfrom %d seconds ago, at %2d:%02d, %s %d %d", buf,
@@ -661,7 +655,7 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
     break;
   default:
     sprintf(buf, "%s", "Uh Oh -- PANIC!");
-  }   // end switch _state
+  } // end switch _state
 
   if (print_flag == PRINT_ON) {
     printf("\ncase [%d]\t", _state);
@@ -673,5 +667,6 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
   ssd1306_draw_string(_disp, 1, 16, _scale, buf);
   ssd1306_show(_disp);
 
-  return 1000 * 1000; // recall this alarm in [return value] microseconds, so in 1 second
+  return 1000 * 1000; // recall this alarm in [return value] microseconds, so in
+                      // 1 second
 } // end rtc_LCD_alarm_callback
