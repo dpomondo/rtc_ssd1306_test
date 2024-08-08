@@ -96,6 +96,7 @@ int8_t start_wireless(void);
 void rtc_UART_alarm_callback(void);
 int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg);
 int64_t bmp_take_readings_callback(alarm_id_t id, void *arg);
+int64_t bmp_reading_to_eeprom(alarm_id_t id, void *arg);
 /* int64_t bmp_take_readings_callback(alarm_id_t id); */
 
 #endif

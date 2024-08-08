@@ -104,11 +104,6 @@ int main() {
   // int now = approx_epoch(&t);
   int now = make_current_timestamp();
 
-  // bmp_readings.low_5_min_temp = bmp_readings.temperature;
-  // bmp_readings.low_5_min_time = now;
-  // bmp_readings.high_5_min_temp = bmp_readings.temperature;
-  // bmp_readings.high_5_min_time = now;
-
   /* until we get the eeprom working... */
   ssd1306_clear(&display);
   ssd1306_draw_string(&display, 0, 0, 1, "set up EEPROM");
@@ -129,6 +124,11 @@ int main() {
   int32_t loops_two = eeprom_get_four_bytes(&eeprom, LOOPS_TWO_ADDRESS);
   int32_t loops_three = eeprom_get_four_bytes(&eeprom, LOOPS_THREE_ADDRESS);
 
+  int32_t next_eeprom_write_time;
+
+  /* If there's already data on the EEPROM we pick up
+  *  where we left off 
+  *  */
   if ((loops_one != 0) & (loops_one == loops_two) &
       (loops_two == loops_three)) {
     bmp_readings.high_temperature =
@@ -150,19 +150,28 @@ int main() {
                              eeprom.current_address);
     }
 
+    // when do we next write to the EEPROM?
+    if (eeprom.current_address <= EEPROM_DATA_START) {
+      next_eeprom_write_time =
+        ((eeprom_get_four_bytes(&eeprom, EEPROM_LAST_ADDRESS - 4) + 900) - now) * 1000;
+    } else {
+      next_eeprom_write_time = 
+        ((eeprom_get_four_bytes(&eeprom, eeprom.current_address - 4) + 900) - now) * 1000;
+    }
     // time_t temp_time_t = (time_t)(loops_one - MOUNTAIN_STANDARD_OFFSET +
     //                               DAYLIGHT_SAVINGS_OFFSET);
     // struct tm *temp_time = localtime(&temp_time_t);
     struct tm *temp_time = tm_from_timestamp(loops_one);
     printf("data populated from EEPROM, current address is %X\n",
            eeprom.current_address);
+    printf("next write to eeprom in is %d seconds\n", (next_eeprom_write_time / 1000));
     printf("EEPROM started at %2d:%02d, %s %d %d\n", temp_time->tm_hour,
            temp_time->tm_min, months[temp_time->tm_mon], temp_time->tm_mday,
            temp_time->tm_year + 1900);
-  } else {
-    // datetime_t t;
-    // rtc_get_datetime(&t);
 
+  } else {
+    /* if we're starting fresh we clear & set up a new EEPROM
+     * */
     ssd1306_clear(&display);
     ssd1306_draw_string(&display, 0, 0, 1, "Clear EEPROM");
     ssd1306_show(&display);
@@ -192,12 +201,16 @@ int main() {
     eeprom_send_four_bytes(&eeprom, LOOPS_TWO_ADDRESS, now);
     eeprom_send_four_bytes(&eeprom, LOOPS_THREE_ADDRESS, now);
 
+  // next EEPROM write is in 15 minutes
+    next_eeprom_write_time = 1000 * 60 * 15;
+
     ssd1306_clear(&display);
     ssd1306_draw_string(&display, 0, 0, 1, "EEPROM done!");
     ssd1306_show(&display);
     printf("data populated from fresh reading, current address is %X, should "
            "be %X",
            eeprom.current_address, EEPROM_DATA_START);
+    printf("next write to eeprom in is %d seconds\n", (next_eeprom_write_time / 1000));
   }
 
   ssd1306_clear(&display);
@@ -212,10 +225,11 @@ int main() {
                       .sec = 00};
 
   // rtc_set_alarm(&alarm, &rtc_UART_alarm_callback);
-  add_alarm_in_ms(1000, ssd1306_rtc_generic_callback, &display, true);
+  add_alarm_in_ms(400, ssd1306_rtc_generic_callback, &display, true);
   add_alarm_in_ms(1000, bmp_take_readings_callback, &bmp_readings, true);
+  add_alarm_in_ms(next_eeprom_write_time, bmp_reading_to_eeprom, &display, true);
 
-  uint8_t c;
+  uint8_t c;  // character to read from uart
   while (1) // FOREVER
   {
     sleep_ms(500);
@@ -480,7 +494,7 @@ void bmp_eeprom_set_low_temp(eeprom_t eeprom) {
  * EEPROM if necessary
  * */
 int64_t bmp_take_readings_callback(alarm_id_t id, void *arg) {
-  static uint32_t _bmp_read_loop = 0;
+  // static uint32_t _bmp_read_loop = 0;
   // datetime_t t = {0};
   // rtc_get_datetime(&t);
   // int now = approx_epoch(&t);
@@ -499,65 +513,68 @@ int64_t bmp_take_readings_callback(alarm_id_t id, void *arg) {
   if (bmp_readings.temperature < bmp_readings.low_temperature) {
     bmp_eeprom_set_low_temp(eeprom);
   }
+  // return value in us
+  return 1000 * 1000; // one thousand miliseconds is one second
+}
 
-  /* TODOadd SECOND_LOWEST temp & time
-   * ehh... no that won't work
-   * */
-  // if ((bmp_readings.low_5_min_temp > bmp_readings.temperature) |
-  //     ((now - bmp_readings.low_5_min_time) > (5 * 60))) {
-  //   bmp_readings.low_5_min_temp = bmp_readings.temperature;
-  //   bmp_readings.low_5_min_time = now;
-  //
-  //   if (print_flag == PRINT_ON) {
-  //     printf("\nnew 5-minute low: %d\t(5-min high: %d)\n",
-  //            bmp_readings.low_5_min_temp, bmp_readings.high_5_min_temp);
-  //   }
-  // }
+/* TODOadd SECOND_LOWEST temp & time
+ * ehh... no that won't work
+ * */
+// if ((bmp_readings.low_5_min_temp > bmp_readings.temperature) |
+//     ((now - bmp_readings.low_5_min_time) > (5 * 60))) {
+//   bmp_readings.low_5_min_temp = bmp_readings.temperature;
+//   bmp_readings.low_5_min_time = now;
+//
+//   if (print_flag == PRINT_ON) {
+//     printf("\nnew 5-minute low: %d\t(5-min high: %d)\n",
+//            bmp_readings.low_5_min_temp, bmp_readings.high_5_min_temp);
+//   }
+// }
 
-  /* TODO add SECOND_HIGHEST temp & time
-  // */
-  // if ((bmp_readings.high_5_min_temp < bmp_readings.temperature) |
-  //     ((now - bmp_readings.high_5_min_time) > (5 * 60))) {
-  //   bmp_readings.high_5_min_temp = bmp_readings.temperature;
-  //   bmp_readings.high_5_min_time = now;
-  //   if (print_flag == PRINT_ON) {
-  //     printf("\nnew 5-minute high: %d\t(5-min low: %d)\n",
-  //            bmp_readings.high_5_min_temp, bmp_readings.low_5_min_temp);
-  //   }
-  // }
+/* TODO add SECOND_HIGHEST temp & time
+// */
+// if ((bmp_readings.high_5_min_temp < bmp_readings.temperature) |
+//     ((now - bmp_readings.high_5_min_time) > (5 * 60))) {
+//   bmp_readings.high_5_min_temp = bmp_readings.temperature;
+//   bmp_readings.high_5_min_time = now;
+//   if (print_flag == PRINT_ON) {
+//     printf("\nnew 5-minute high: %d\t(5-min low: %d)\n",
+//            bmp_readings.high_5_min_temp, bmp_readings.low_5_min_temp);
+//   }
+// }
 
-  // _bmp_read_loop++;
-  if (++_bmp_read_loop == (15 * 60)) // every 15 minutes
-  {
-    if (print_flag == PRINT_ON) {
-      printf("current temp to EEPROM: %d to address %X\n",
-             bmp_readings.temperature, eeprom.current_address);
-    }
-    eeprom_send_four_bytes(&eeprom, eeprom.current_address,
-                           bmp_readings.temperature);
-    eeprom.current_address += 4;
-    if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
-        (eeprom.current_address < EEPROM_DATA_START)) {
-      eeprom.current_address =
-          EEPROM_DATA_START; // wrap around, but not to 0x000!
-    }
-
-    eeprom_send_four_bytes(&eeprom, eeprom.current_address, now);
-    eeprom.current_address += 4;
-
-    if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
-        (eeprom.current_address < EEPROM_DATA_START)) {
-      eeprom.current_address =
-          EEPROM_DATA_START; // wrap around, but not to 0x000!
-    }
-    eeprom_send_four_bytes(&eeprom, CURRENT_EEPROM_ADDRESS,
-                           eeprom.current_address);
-    if (print_flag == PRINT_ON) {
-      printf("\tnew address: %X\n", eeprom.current_address);
-    }
-    _bmp_read_loop = 0;
+/* Write current bmp temp reading to EEPROM, every 15 minutes
+ * */
+int64_t bmp_reading_to_eeprom(alarm_id_t id, void *usr_data) {
+  int now = make_current_timestamp();
+  if (print_flag == PRINT_ON) {
+    printf("current temp to EEPROM: %d to address %X\n",
+           bmp_readings.temperature, eeprom.current_address);
   }
-  return 1000 * 1000;
+  eeprom_send_four_bytes(&eeprom, eeprom.current_address,
+                         bmp_readings.temperature);
+  eeprom.current_address += 4;
+  if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
+      (eeprom.current_address < EEPROM_DATA_START)) {
+    eeprom.current_address =
+        EEPROM_DATA_START; // wrap around, but not to 0x000!
+  }
+
+  eeprom_send_four_bytes(&eeprom, eeprom.current_address, now);
+  eeprom.current_address += 4;
+
+  if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
+      (eeprom.current_address < EEPROM_DATA_START)) {
+    eeprom.current_address =
+        EEPROM_DATA_START; // wrap around, but not to 0x000!
+  }
+  eeprom_send_four_bytes(&eeprom, CURRENT_EEPROM_ADDRESS,
+                         eeprom.current_address);
+  if (print_flag == PRINT_ON) {
+    printf("\tnew address: %X\n", eeprom.current_address);
+  }
+  // return value in us
+  return 1000 * 1000 * 60 * 15; // every 900 million microseconds
 }
 
 /* update the ssd1306 screen once per second
