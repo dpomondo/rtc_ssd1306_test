@@ -93,6 +93,7 @@ void bmp_eeprom_set_low_temp(eeprom_t eeprom);
 void setup_i2c(void);
 void setup_spi(void);
 int8_t start_wireless(void);
+int setup_eeprom_with_callback_time(ssd1306_t *display);
 void rtc_UART_alarm_callback(void);
 int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg);
 int64_t bmp_take_readings_callback(alarm_id_t id, void *arg);
