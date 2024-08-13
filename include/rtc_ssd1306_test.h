@@ -9,6 +9,7 @@
 #include "lwip/dns.h"
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
+#include "lwip/tcp.h"
 #include "ntp_request.h"
 #include "25LC320A.h"
 #include "ssd1306.h"
@@ -99,5 +100,8 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg);
 int64_t bmp_take_readings_callback(alarm_id_t id, void *arg);
 int64_t bmp_reading_to_eeprom(alarm_id_t id, void *arg);
 /* int64_t bmp_take_readings_callback(alarm_id_t id); */
+int send_get_request_with_data();
+err_t get_req_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t t);
+err_t connected(void *arg, struct tcp_pcb *pcb, err_t err);
 
 #endif

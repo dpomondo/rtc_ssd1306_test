@@ -39,7 +39,7 @@ pico_set_program_name(rtc_ssd1306_test "rtc_ssd1306_test")
 pico_set_program_version(rtc_ssd1306_test "0.1")
 
 pico_enable_stdio_uart(rtc_ssd1306_test 1)
-pico_enable_stdio_usb(rtc_ssd1306_test 0)
+pico_enable_stdio_usb(rtc_ssd1306_test 1)
 
 # Add the standard library to the build
 target_link_libraries(rtc_ssd1306_test

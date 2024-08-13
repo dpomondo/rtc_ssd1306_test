@@ -1,4 +1,5 @@
 #include "hardware/uart.h"
+#include "lwip/pbuf.h"
 #include "pico/cyw43_arch.h"
 #include "pico/platform.h"
 #include "pico/stdlib.h"
@@ -12,7 +13,7 @@
 
 /* #include "lwip/dns.h" */
 /* #include "lwip/pbuf.h" */
-/* #include "lwip/udp.h" */
+#include "lwip/tcp.h"
 
 #include "hardware/i2c.h"
 #include "hardware/rtc.h"
@@ -666,3 +667,49 @@ int setup_eeprom_with_callback_time(ssd1306_t *display_pnt) {
   }
   return next_eeprom_write_time;
 } // setup_eeprom_with_callback_time(ssd1306_t *display_pnt)
+//
+int send_get_request_with_data() {
+  printf("trying to send stuff to lil' pi\r");
+  struct tcp_pcb *pcb = tcp_new();
+  tcp_recv(pcb, get_req_recv);
+  ip_addr_t ip;
+  IP4_ADDR(&ip, 192, 168, 0, 24);
+  cyw43_arch_lwip_begin();
+  err_t err = tcp_connect(pcb, &ip, 80, connected);
+  cyw43_arch_lwip_end();
+
+  return 0;
+}
+
+err_t connected(void *arg, struct tcp_pcb *pcb, err_t err) {
+  printf("connecting to ip address...\t");
+  const int BUFFSIZE = 2048;
+  char send_buff[BUFFSIZE];
+  char template_header[] = "GET /query-data?data=%f HTTP/1.1\r\n"
+                  "HOST:%s\r\n\r\n";
+  sprintf(send_buff, template_header, bmp_readings.temperature, "192.168.0.24");
+  err = tcp_write(pcb, send_buff, strlen(send_buff), 0);
+  err = tcp_output(pcb);
+  printf("wrote things to lil pi\r");
+  return ERR_OK;
+}
+
+/* stolen from a book
+* */
+err_t get_req_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
+  printf("\ngot something from the lil pi...\n");
+  char recv_buff[2048];
+  if (p != NULL) {
+    printf("received total %d this buffer %d  err %d",
+           p->tot_len,
+           p->len,
+           err);
+    pbuf_copy_partial(p, recv_buff, p->tot_len, 0);
+    recv_buff[p->tot_len] = 0;
+    printf("Buffer received: %s\n", recv_buff);
+    tcp_recved(pcb, p->tot_len);
+    pbuf_free(p);
+  } // end if
+  printf("leaving recived func\n");
+  return ERR_OK;
+}
