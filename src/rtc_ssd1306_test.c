@@ -252,7 +252,7 @@ int8_t start_wireless(void) {
 } // end start_wireless
 
 void read_convert_eeprom(eeprom_t *eeprom_ptr) {
-  uint32_t data;
+  int32_t data;
   uint32_t timestamp;
   struct tm *temp_time;
 
@@ -280,7 +280,7 @@ void read_convert_eeprom(eeprom_t *eeprom_ptr) {
 }
 
 void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
-  uint32_t data;
+  int32_t data;
   uint32_t timestamp;
   struct tm *temp_time;
 
