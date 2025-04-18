@@ -108,8 +108,7 @@ int main() {
                   bmp_reading_to_eeprom, &display, true);
 
   uint8_t c; // character to read from uart
-  while (1)  // FOREVER
-  {
+  while (1)  {  // FOREVER
     sleep_ms(500);
     static uint8_t _menu_state = 0;
     while (uart_is_readable(uart0)) {
