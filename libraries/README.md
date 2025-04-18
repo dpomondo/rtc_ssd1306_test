@@ -1,8 +1,12 @@
 ```
-libraries
-├── bmp280_i2c -> {where you put your stuff}/libraries/bmp280_i2c
-├── README.md
-└── wireless -> {where you put your stuff}/libraries/wireless
+libraries/
+├── libraries/bmp280_i2c/
+├── libraries/eeprom/
+├── libraries/lcd1602/
+├── libraries/ntp_request/
+├── libraries/pico-ssd1306/
+├── libraries/README.md
+└── libraries/wireless/
 ```
 
 
