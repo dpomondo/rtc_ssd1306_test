@@ -34,6 +34,7 @@ add_subdirectory(libraries/pico-ssd1306)
 add_subdirectory(libraries/ntp_request)
 add_subdirectory(libraries/bmp280_i2c)
 add_subdirectory(libraries/eeprom)
+add_subdirectory(libraries/wireless)
 
 pico_set_program_name(rtc_ssd1306_test "rtc_ssd1306_test")
 pico_set_program_version(rtc_ssd1306_test "0.1")
