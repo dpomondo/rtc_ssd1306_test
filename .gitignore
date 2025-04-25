@@ -1,0 +1,43 @@
+# build/
+.cache/
+# CMakeLists.txt
+compile_commands.json
+.git/
+# .gitignore
+# include/
+# libraries/
+
+libraries/bmp280_i2c
+libraries/eeprom
+libraries/lcd1602
+libraries/ntp_request
+libraries/pico-ssd1306
+# libraries/README.md
+libraries/wireless
+
+lwipopts.h
+pico_sdk_import.cmake
+# README.md
+# src/
+!build/open.sh
+build/CMakeCache.txt
+build/CMakeFiles/
+build/cmake_install.cmake
+build/compile_commands.json
+build/_deps/
+build/generated/
+build/libraries/
+build/Makefile
+build/open.sh
+build/pico_flash_region.ld
+build/pico-sdk/
+build/picotool/
+build/pioasm/
+build/pioasm-install/
+build/rtc_ssd1306_test.bin
+build/rtc_ssd1306_test.dis
+build/rtc_ssd1306_test.elf
+build/rtc_ssd1306_test.elf.map
+build/rtc_ssd1306_test.hex
+build/rtc_ssd1306_test.uf2
+build/src/
