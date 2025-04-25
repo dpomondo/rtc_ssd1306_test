@@ -16,3 +16,8 @@ is primarly because of non-standardized interafce -- some libraries require expl
 while others can make due with pointers.
 
 Once this is fixed, libraries will likely be prebuilt and linked.
+
+Blunt force linking from top-level project directory: 
+```
+ln -s ~/Projects/PICO/cxx/shared/libraries/*/ ./libraries
+```

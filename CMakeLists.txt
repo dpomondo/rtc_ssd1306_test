@@ -65,6 +65,7 @@ target_link_libraries(rtc_ssd1306_test
         ntp_request
         pico-ssd1306
         eeprom_25XX  
+        wireless
         )
 
 pico_add_extra_outputs(rtc_ssd1306_test)

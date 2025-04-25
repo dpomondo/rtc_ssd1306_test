@@ -22,6 +22,7 @@
 #include "ntp_request.h"
 #include "rtc_ssd1306_test.h"
 #include "ssd1306.h"
+#include "wireless.h"
 
 struct bmp280_calib_param params;
 struct temperature_struct bmp_readings;
@@ -72,6 +73,7 @@ int main() {
   ssd1306_draw_string(&display, 0, 0, 1, "Starting wireless...");
   ssd1306_show(&display);
   int8_t wir_err = start_wireless();
+  // and here we do something with wir_err?
 
   // get the time from the internet
   ssd1306_clear(&display);
@@ -231,24 +233,24 @@ void setup_spi(void) {
 
 /* start the wireless stuffs
  * */
-int8_t start_wireless(void) {
-  printf("Trying to connect to %s with password %s\r\n", WIFI_SSID,
-         WIFI_PASSWORD);
-  if (cyw43_arch_init()) {
-    printf("failed to initialise\n");
-  } else {
-    printf("Cyw43_arch initialized\r\n");
-  } // end if...else
-
-  cyw43_arch_enable_sta_mode();
-
-  while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,
-                                            CYW43_AUTH_WPA2_AES_PSK, 10000)) {
-    printf("failed to connect\n");
-    sleep_ms(1000);
-  }
-  return EXIT_SUCCESS;
-} // end start_wireless
+// int8_t start_wireless(void) {
+//   printf("Trying to connect to %s with password %s\r\n", WIFI_SSID,
+//          WIFI_PASSWORD);
+//   if (cyw43_arch_init()) {
+//     printf("failed to initialise\n");
+//   } else {
+//     printf("Cyw43_arch initialized\r\n");
+//   } // end if...else
+//
+//   cyw43_arch_enable_sta_mode();
+//
+//   while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,
+//                                             CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+//     printf("failed to connect\n");
+//     sleep_ms(1000);
+//   }
+//   return EXIT_SUCCESS;
+// } // end start_wireless
 
 void read_convert_eeprom(eeprom_t *eeprom_ptr) {
   int32_t data;
