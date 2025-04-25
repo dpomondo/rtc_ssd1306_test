@@ -7,13 +7,13 @@ compile_commands.json
 # include/
 # libraries/
 
-libraries/bmp280_i2c
-libraries/eeprom
-libraries/lcd1602
-libraries/ntp_request
-libraries/pico-ssd1306
+libraries/bmp280_i2c/
+libraries/eeprom/
+libraries/lcd1602/
+libraries/ntp_request/
+libraries/pico-ssd1306/
 # libraries/README.md
-libraries/wireless
+libraries/wireless/
 
 lwipopts.h
 pico_sdk_import.cmake

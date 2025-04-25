@@ -1,7 +1,7 @@
 ```
 rtc_ssd1306_test
 ├── CMakeLists.txt
-├── compile_commands.json -> build/compile_commands.json
+├── compile_commands.json <- linked from build/compile_commands.json
 ├── lwipopts.h <- copied from wifi examples in pico-examples
 ├── pico_sdk_import.cmake <- copied from pico-sdk/external/
 ├── README.md
