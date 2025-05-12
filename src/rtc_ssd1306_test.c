@@ -128,20 +128,22 @@ int main() {
                  bmp_readings.low_temperature);
         }
         break;
-      case 'P' + 0:
-      case 'p' + 0:
-        if (print_flag == PRINT_CSV) {
-          read_eeprom_as_CSV(&eeprom);
-        } else if (print_flag == PRINT_ON) {
+      case 'd' + 0:
+      case 'D' + 0:
+        // if (print_flag == PRINT_CSV) {
+        //   read_eeprom_as_CSV(&eeprom);
+        // } else 
+        if (print_flag == PRINT_ON) {
           printf("****** here's the eeprom! *****\n");
           print_flag = PRINT_OFF;
           eeprom_dump_all(&eeprom);
           print_flag = PRINT_ON;
         }
         break;
-      case 'c' + 0:
-      case 'C' + 0:
+      case 'p' + 0:
+      case 'P' + 0:
         if (print_flag == PRINT_CSV) {
+          // do not need to toggle print_flag since nothing extraneous will print anyway
           read_eeprom_as_CSV(&eeprom);
         } else {
           print_flag = PRINT_OFF;
@@ -151,22 +153,13 @@ int main() {
         break;
       case 'r' + 0:
       case 'R' + 0:
-        printf("Reset [H]igh / [L]ow temperatures, or [n]othing?\n");
+        printf("Reset \t[1] high temperature\n");
+        printf("\t\t[2] low temperatures\n"); 
+        printf("\t\t[3] nothing?\n");
         _menu_state = 1;
         print_flag = PRINT_OFF;
         break;
-      case 'l' + 0:
-      case 'L' + 0:
-        if (_menu_state == 1) {
-          print_flag = PRINT_ON;
-          printf("reset low ");
-          bmp_eeprom_set_low_temp(eeprom);
-        }
-        _menu_state = 0;
-        print_flag = PRINT_ON;
-        break;
-      case 'h' + 0:
-      case 'H' + 0:
+      case '1' + 0:
         if (_menu_state == 1) {
           print_flag = PRINT_ON;
           printf("reset high ");
@@ -175,11 +168,32 @@ int main() {
         _menu_state = 0;
         print_flag = PRINT_ON;
         break;
-      case 'n' + 0:
-      case 'N' + 0:
+      case '2' + 0:
+        if (_menu_state == 1) {
+          print_flag = PRINT_ON;
+          printf("reset low ");
+          bmp_eeprom_set_low_temp(eeprom);
+        }
+        _menu_state = 0;
+        print_flag = PRINT_ON;
+        break;
+      case '3' + 0:
         printf("do nothing ");
         _menu_state = 0;
         print_flag = PRINT_ON;
+        break;
+      case 'h' + 0:
+      case 'H' + 0:
+        if (print_flag != PRINT_OFF) {
+          printf("[I]nfo on high and low temps\n");
+          printf("[D]ump eeprom contents\n");
+          printf("[P]rint eeprom contents in human-readable form\n");
+          printf("[R]eset high and low temperatures\n");
+          printf("[V] Change print format to CSV\n");
+          printf("[X] Turn on normal printing\n");
+          printf("[T]oggle normal printing on or off\n");
+          }
+        // print_flag = PRINT_OFF;
         break;
       case 'V' + 0:
       case 'v' + 0:
@@ -190,10 +204,19 @@ int main() {
         break;
       case 'X' + 0:
       case 'x' + 0:
-        if (print_flag == PRINT_CSV) {
+        if (print_flag != PRINT_ON) {
           printf("change print mode to ON\n");
         }
         print_flag = PRINT_ON;
+        break;
+      case 't' + 0:
+      case 'T' + 0:
+        if (print_flag == PRINT_ON) {
+            print_flag = PRINT_OFF;
+          } else if (print_flag == PRINT_OFF) {
+            print_flag = PRINT_ON;
+            printf("change print mode to ON\n");
+          }
         break;
       case 0:
       default:
