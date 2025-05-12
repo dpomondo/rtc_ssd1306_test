@@ -26,9 +26,13 @@
 
 struct bmp280_calib_param params;
 struct temperature_struct bmp_readings;
+bmp280_t bmp280;
 eeprom_t eeprom;
-enum print_flag_types { PRINT_OFF, PRINT_ON, PRINT_CSV };
+enum print_flag_types { PRINT_OFF, PRINT_ON };
+enum print_format_flag_types { PRINT_CSV, PRINT_NORMAL };
 uint8_t print_flag = PRINT_ON;
+uint8_t print_format = PRINT_NORMAL;
+uint8_t old_flg;
 
 int make_current_timestamp(void) {
   datetime_t t;
@@ -58,11 +62,14 @@ int main() {
   // bmp280
   ssd1306_draw_string(&display, 0, 0, 1, "Set up BMP280");
   ssd1306_show(&display);
-  bmp280_init();
+  printf("initialize bmp280 with address %x...\n", PRIMARY_ADDR);
+  bmp280_init(&bmp280, I2C_PORT, false);
+  // bmp280_init();
   sleep_ms(500);
-  bmp280_get_calib_params(&params);
+  bmp280_get_calib_params(&bmp280, &params);
 
-  bmp280_read_raw(&bmp_readings.raw_temperature, &bmp_readings.raw_pressure);
+  bmp280_read_raw(&bmp280, &bmp_readings.raw_temperature,
+                  &bmp_readings.raw_pressure);
   bmp_readings.temperature =
       bmp280_convert_temp(bmp_readings.raw_temperature, &params);
   bmp_readings.pressure = bmp280_convert_pressure(
@@ -109,8 +116,8 @@ int main() {
   add_alarm_in_ms(setup_eeprom_with_callback_time(&display),
                   bmp_reading_to_eeprom, &display, true);
 
-  uint8_t c; // character to read from uart
-  while (1)  {  // FOREVER
+  uint8_t c;  // character to read from uart
+  while (1) { // FOREVER
     sleep_ms(500);
     static uint8_t _menu_state = 0;
     while (uart_is_readable(uart0)) {
@@ -132,9 +139,9 @@ int main() {
       case 'D' + 0:
         // if (print_flag == PRINT_CSV) {
         //   read_eeprom_as_CSV(&eeprom);
-        // } else 
+        // } else
         if (print_flag == PRINT_ON) {
-          printf("****** here's the eeprom! *****\n");
+          printf("****** here's the raw eeprom! *****\n");
           print_flag = PRINT_OFF;
           eeprom_dump_all(&eeprom);
           print_flag = PRINT_ON;
@@ -142,19 +149,22 @@ int main() {
         break;
       case 'p' + 0:
       case 'P' + 0:
-        if (print_flag == PRINT_CSV) {
-          // do not need to toggle print_flag since nothing extraneous will print anyway
+        if (print_flag == PRINT_ON) {
+          printf("****** here's the human-readable eeprom! *****\n");
+        }
+        old_flg = print_flag;
+        print_flag = PRINT_OFF;
+        if (print_format == PRINT_CSV) {
           read_eeprom_as_CSV(&eeprom);
         } else {
-          print_flag = PRINT_OFF;
           read_convert_eeprom(&eeprom);
-          print_flag = PRINT_ON;
         }
+        print_flag = old_flg;
         break;
       case 'r' + 0:
       case 'R' + 0:
         printf("Reset \t[1] high temperature\n");
-        printf("\t\t[2] low temperatures\n"); 
+        printf("\t\t[2] low temperatures\n");
         printf("\t\t[3] nothing?\n");
         _menu_state = 1;
         print_flag = PRINT_OFF;
@@ -189,34 +199,41 @@ int main() {
           printf("[D]ump eeprom contents\n");
           printf("[P]rint eeprom contents in human-readable form\n");
           printf("[R]eset high and low temperatures\n");
+          printf("[N] Change print format to normal\n");
           printf("[V] Change print format to CSV\n");
-          printf("[X] Turn on normal printing\n");
+          printf("[X] Turn off printing\n");
           printf("[T]oggle normal printing on or off\n");
-          }
+        }
         // print_flag = PRINT_OFF;
+        break;
+      case 'N' + 0:
+      case 'n' + 0:
+        printf("change print mode to Normal\n");
+        print_format = PRINT_NORMAL;
         break;
       case 'V' + 0:
       case 'v' + 0:
-        if (print_flag != PRINT_CSV) {
-          printf("change print mode to CSV\n");
-        }
-        print_flag = PRINT_CSV;
+        // if (print_flag == PRINT_ON && print_format != PRINT_CSV) {
+        //   printf("change print mode to CSV\n");
+        // }
+        printf("change print mode to CSV\n");
+        print_format = PRINT_CSV;
         break;
       case 'X' + 0:
       case 'x' + 0:
-        if (print_flag != PRINT_ON) {
-          printf("change print mode to ON\n");
+        if (print_flag == PRINT_ON) {
+          printf("change print mode to OFF\n");
         }
-        print_flag = PRINT_ON;
+        print_flag = PRINT_OFF;
         break;
       case 't' + 0:
       case 'T' + 0:
         if (print_flag == PRINT_ON) {
-            print_flag = PRINT_OFF;
-          } else if (print_flag == PRINT_OFF) {
-            print_flag = PRINT_ON;
-            printf("change print mode to ON\n");
-          }
+          print_flag = PRINT_OFF;
+        } else if (print_flag == PRINT_OFF) {
+          print_flag = PRINT_ON;
+          printf("change print mode to ON\n");
+        }
         break;
       case 0:
       default:
@@ -268,7 +285,8 @@ void setup_spi(void) {
 //   cyw43_arch_enable_sta_mode();
 //
 //   while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,
-//                                             CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+//                                             CYW43_AUTH_WPA2_AES_PSK, 10000))
+//                                             {
 //     printf("failed to connect\n");
 //     sleep_ms(1000);
 //   }
@@ -398,7 +416,8 @@ void bmp_eeprom_set_low_temp(eeprom_t eeprom) {
 int64_t bmp_take_readings_callback(alarm_id_t id, void *arg) {
   int now = make_current_timestamp();
 
-  bmp280_read_raw(&bmp_readings.raw_temperature, &bmp_readings.raw_pressure);
+  bmp280_read_raw(&bmp280, &bmp_readings.raw_temperature,
+                  &bmp_readings.raw_pressure);
   bmp_readings.temperature =
       bmp280_convert_temp(bmp_readings.raw_temperature, &params);
   bmp_readings.pressure = bmp280_convert_pressure(
@@ -578,8 +597,12 @@ int setup_eeprom_with_callback_time(ssd1306_t *display_pnt) {
   gpio_set_dir(eeprom.cs_pin, GPIO_OUT);
   gpio_put(eeprom.cs_pin, 1);
 
-  printf("Dump EEPROM contents:\n");
-  eeprom_dump_all(&eeprom);
+  if (print_flag == PRINT_ON) {
+    printf("****** here's the eeprom! *****\n");
+    print_flag = PRINT_OFF;
+    eeprom_dump_all(&eeprom);
+    print_flag = PRINT_ON;
+  }
 
   // do we start fresh or is the eeprom already full of good juicy data?
   // this is where we try & find out
