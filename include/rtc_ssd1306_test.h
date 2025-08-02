@@ -75,6 +75,7 @@ struct temperature_struct
 
 #define EEPROM_BYTES_PER_PAGE       32
 
+#define EEPROM_SIZE                 4096
 #define EEPROM_LOOPS_ADDRESS        0x000
 #define EEPROM_HIGH_TEMP_ADDRESS    0x004
 #define EEPROM_HIGH_T_TIME          0x008

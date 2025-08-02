@@ -14,11 +14,11 @@
 /* #include "lwip/pbuf.h" */
 /* #include "lwip/udp.h" */
 
-#include "hardware/i2c.h"
-#include "hardware/rtc.h"
-/* #include "hardware/watchdog.h" */
 #include "25LC320A.h"
 #include "bmp280_i2c.h"
+#include "hardware/i2c.h"
+#include "hardware/rtc.h"
+#include "hardware/watchdog.h"
 #include "ntp_request.h"
 #include "rtc_ssd1306_test.h"
 #include "ssd1306.h"
@@ -113,9 +113,10 @@ int main() {
   // write current bmp readings to the eeprom; the next write depends on the
   // previous Write time; the setup function returns next write time so we kill
   // 2 birds with one call
-  add_alarm_in_ms(setup_eeprom_with_callback_time(&display),
+  alarm_id_t bmp_write_alarm = add_alarm_in_ms(setup_eeprom_with_callback_time(&display),
                   bmp_reading_to_eeprom, &display, true);
 
+  watchdog_enable(8000, true);
   uint8_t c;  // character to read from uart
   while (1) { // FOREVER
     sleep_ms(500);
@@ -144,6 +145,9 @@ int main() {
           printf("****** here's the raw eeprom! *****\n");
           print_flag = PRINT_OFF;
           eeprom_dump_all(&eeprom);
+          printf("Current address:\t%x\n", eeprom.current_address);
+          printf("next write to eeprom in is %d seconds\n",
+           (remaining_alarm_time_ms(bmp_write_alarm) / 1000));
           print_flag = PRINT_ON;
         }
         break;
@@ -242,6 +246,7 @@ int main() {
       c = 0;
     }
 
+    watchdog_update();
   } // END FOREVER
   // begin shutdown...this should never get reached
   ssd1306_deinit(&display);
@@ -300,11 +305,12 @@ void read_convert_eeprom(eeprom_t *eeprom_ptr) {
 
   printf("\n*********************** converting eeprom contents\n");
   uint16_t start_address = eeprom_ptr->current_address;
-  for (uint16_t index; index < ((4096 - EEPROM_DATA_START) / 8); index++) {
+  for (uint16_t index;
+       index < ((eeprom_ptr->eeprom_size - EEPROM_DATA_START) / 8); index++) {
     if ((index % 3) == 0) {
       printf("\n");
     }
-    if (start_address > EEPROM_LAST_ADDRESS) {
+    if (start_address > eeprom_ptr->last_address) {
       start_address = EEPROM_DATA_START;
     }
     data = eeprom_get_four_bytes(eeprom_ptr, start_address);
@@ -328,7 +334,8 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
 
   printf("CSV START\n");
   uint16_t start_address = eeprom_ptr->current_address;
-  for (uint16_t index; index < ((4096 - EEPROM_DATA_START) / 8); index++) {
+  for (uint16_t index;
+       index < ((eeprom_ptr->eeprom_size - EEPROM_DATA_START) / 8); index++) {
     data = eeprom_get_four_bytes(eeprom_ptr, start_address);
     start_address += 4;
     timestamp = eeprom_get_four_bytes(eeprom_ptr, start_address);
@@ -336,7 +343,7 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
     // data & timestamps are in 8 byte chunks, so unless things get really
     // destabilized somehow we should never go past the final address until
     // after both data & timestamp reads
-    if (start_address > EEPROM_LAST_ADDRESS) {
+    if (start_address > eeprom_ptr->last_address) {
       start_address = EEPROM_DATA_START;
     }
 
@@ -436,6 +443,8 @@ int64_t bmp_take_readings_callback(alarm_id_t id, void *arg) {
 }
 
 /* Write current bmp temp reading to EEPROM, every 15 minutes
+ *
+ * This apparently uses global variables, since it's an alarm calback
  * */
 int64_t bmp_reading_to_eeprom(alarm_id_t id, void *usr_data) {
   int now = make_current_timestamp();
@@ -446,16 +455,21 @@ int64_t bmp_reading_to_eeprom(alarm_id_t id, void *usr_data) {
   eeprom_send_four_bytes(&eeprom, eeprom.current_address,
                          bmp_readings.temperature);
   eeprom.current_address += 4;
-  if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
-      (eeprom.current_address < EEPROM_DATA_START)) {
-    eeprom.current_address =
-        EEPROM_DATA_START; // wrap around, but not to 0x000!
-  }
+
+  /* unless things get de-synced, current_address should always be 
+   * a multiple of 8 and so we should be able to write 8 bytes before 
+   * checking we're out of bounds
+   * */
+  // if ((eeprom.current_address > eeprom.last_address) |
+  //     (eeprom.current_address < EEPROM_DATA_START)) {
+  //   eeprom.current_address =
+  //       EEPROM_DATA_START; // wrap around, but not to 0x000!
+  // }
 
   eeprom_send_four_bytes(&eeprom, eeprom.current_address, now);
   eeprom.current_address += 4;
 
-  if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
+  if ((eeprom.current_address > eeprom.last_address) |
       (eeprom.current_address < EEPROM_DATA_START)) {
     eeprom.current_address =
         EEPROM_DATA_START; // wrap around, but not to 0x000!
@@ -591,7 +605,8 @@ int setup_eeprom_with_callback_time(ssd1306_t *display_pnt) {
   ssd1306_draw_string(display_pnt, 0, 0, 1, "set up EEPROM");
   ssd1306_show(display_pnt);
 
-  eeprom_init(&eeprom, SPI_PORT, EEPROM_CS_PIN, EEPROM_BYTES_PER_PAGE);
+  eeprom_init(&eeprom, SPI_PORT, EEPROM_CS_PIN, EEPROM_SIZE,
+              EEPROM_BYTES_PER_PAGE);
   //* initialize eeprom CS pin:
   gpio_init(eeprom.cs_pin);
   gpio_set_dir(eeprom.cs_pin, GPIO_OUT);
@@ -629,7 +644,7 @@ int setup_eeprom_with_callback_time(ssd1306_t *display_pnt) {
 
     eeprom.current_address =
         eeprom_get_four_bytes(&eeprom, CURRENT_EEPROM_ADDRESS);
-    if ((eeprom.current_address > EEPROM_LAST_ADDRESS) |
+    if ((eeprom.current_address > eeprom.last_address) |
         (eeprom.current_address < EEPROM_DATA_START)) {
       eeprom.current_address = EEPROM_DATA_START;
       eeprom_send_four_bytes(&eeprom, CURRENT_EEPROM_ADDRESS,
@@ -639,7 +654,7 @@ int setup_eeprom_with_callback_time(ssd1306_t *display_pnt) {
     // when do we next write to the EEPROM?
     if (eeprom.current_address <= EEPROM_DATA_START) {
       next_eeprom_write_time =
-          ((eeprom_get_four_bytes(&eeprom, EEPROM_LAST_ADDRESS - 4) + 900) -
+          ((eeprom_get_four_bytes(&eeprom, eeprom.last_address - 4) + 900) -
            now) *
           1000;
     } else {

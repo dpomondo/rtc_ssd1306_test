@@ -61,6 +61,7 @@ target_link_libraries(rtc_ssd1306_test
         hardware_i2c
         hardware_spi
         hardware_timer
+        hardware_watchdog
         bmp280_i2c        
         ntp_request
         pico-ssd1306
