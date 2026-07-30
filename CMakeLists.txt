@@ -34,7 +34,10 @@ pico_sdk_init()
 
 add_executable(rtc_ssd1306_test "")
 add_subdirectory(src)
-# add_subdirectory(include)
+# ##############################################################################
+# adding these allows the compiler to find these without symlink. If
+# subdirectories are not below the project root, build directory for the
+# binaries must be specified
 add_subdirectory(../shared/libraries/pico-ssd1306 libraries/pico-ssd1306)
 add_subdirectory(../shared/libraries/ntp_request libraries/ntp_request)
 add_subdirectory(../shared/libraries/bmp280_i2c libraries/bmp280_i2c)
@@ -50,11 +53,10 @@ pico_enable_stdio_usb(rtc_ssd1306_test 0)
 # Add the standard library to the build
 target_link_libraries(rtc_ssd1306_test pico_stdlib)
 
-# Add the standard include files to the build
+# tell cmake where to look for header files
 target_include_directories(
   rtc_ssd1306_test
-  PRIVATE ${CMAKE_CURRENT_LIST_DIR} 
-          ${CMAKE_CURRENT_LIST_DIR}/include
+  PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/include
           ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other
                                        # standard includes, if required
 )
