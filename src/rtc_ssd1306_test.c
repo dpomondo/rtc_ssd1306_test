@@ -2,9 +2,14 @@
 #include "pico/cyw43_arch.h"
 #include "pico/platform.h"
 #include "pico/stdlib.h"
+#include "hardware/i2c.h"
+#include "hardware/rtc.h"
+#include "hardware/watchdog.h"
 #include "pico/time.h"
 #include "pico/types.h"
 #include "pico/util/datetime.h"
+#include "pico/status_led.h"
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,13 +21,10 @@
 
 #include "25LC320A.h"
 #include "bmp280_i2c.h"
-#include "hardware/i2c.h"
-#include "hardware/rtc.h"
-#include "hardware/watchdog.h"
 #include "ntp_request.h"
-#include "rtc_ssd1306_test.h"
 #include "ssd1306.h"
 #include "wireless.h"
+#include "rtc_ssd1306_test.h"
 
 struct bmp280_calib_param params;
 struct temperature_struct bmp_readings;
@@ -63,7 +65,7 @@ int main() {
   ssd1306_draw_string(&display, 0, 0, 1, "Set up BMP280");
   ssd1306_show(&display);
   printf("initialize bmp280 with address %x...\n", PRIMARY_ADDR);
-  bmp280_init(&bmp280, I2C_PORT, false);
+  bmp280_init(&bmp280, I2C_PORT, PRIMARY_ADDR);
   // bmp280_init();
   sleep_ms(500);
   bmp280_get_calib_params(&bmp280, &params);
@@ -81,6 +83,9 @@ int main() {
   ssd1306_show(&display);
   int8_t wir_err = start_wireless();
   // and here we do something with wir_err?
+  
+  status_led_init_with_context(cyw43_arch_async_context());
+  status_led_set_state(1);
 
   // get the time from the internet
   ssd1306_clear(&display);
@@ -120,6 +125,9 @@ int main() {
   uint8_t c;  // character to read from uart
   while (1) { // FOREVER
     sleep_ms(500);
+
+    status_led_set_state(!status_led_get_state());
+
     static uint8_t _menu_state = 0;
     while (uart_is_readable(uart0)) {
       uart_read_blocking(uart0, &c, 1);
@@ -168,8 +176,8 @@ int main() {
       case 'r' + 0:
       case 'R' + 0:
         printf("Reset \t[1] high temperature\n");
-        printf("\t\t[2] low temperatures\n");
-        printf("\t\t[3] nothing?\n");
+        printf("\t[2] low temperatures\n");
+        printf("\t[3] nothing?\n");
         _menu_state = 1;
         print_flag = PRINT_OFF;
         break;
@@ -198,7 +206,7 @@ int main() {
         break;
       case 'h' + 0:
       case 'H' + 0:
-        if (print_flag != PRINT_OFF) {
+        // if (print_flag != PRINT_OFF) {
           printf("[I]nfo on high and low temps\n");
           printf("[D]ump eeprom contents\n");
           printf("[P]rint eeprom contents in human-readable form\n");
@@ -207,7 +215,7 @@ int main() {
           printf("[V] Change print format to CSV\n");
           printf("[X] Turn off printing\n");
           printf("[T]oggle normal printing on or off\n");
-        }
+        // }
         // print_flag = PRINT_OFF;
         break;
       case 'N' + 0:
@@ -320,8 +328,11 @@ void read_convert_eeprom(eeprom_t *eeprom_ptr) {
 
     temp_time = tm_from_timestamp(timestamp);
     printf("%d epoch: %d ", data, timestamp);
-    printf("%2d:%02d, %s %d %d | ", temp_time->tm_hour, temp_time->tm_min,
-           months[temp_time->tm_mon], temp_time->tm_mday,
+    printf("%2d:%02d, %s %d %d | ", 
+           temp_time->tm_hour, 
+           temp_time->tm_min,
+           months[temp_time->tm_mon], 
+           temp_time->tm_mday,
            temp_time->tm_year + 1900);
   }
   printf("\n*********************** done converting eeprom contents\n\n");
@@ -337,6 +348,8 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
   for (uint16_t index;
        index < ((eeprom_ptr->eeprom_size - EEPROM_DATA_START) / 8); index++) {
     data = eeprom_get_four_bytes(eeprom_ptr, start_address);
+    int32_t temp_temp = data;
+    // uint16_t temp_humi = 0;
     start_address += 4;
     timestamp = eeprom_get_four_bytes(eeprom_ptr, start_address);
     start_address += 4;
@@ -348,9 +361,16 @@ void read_eeprom_as_CSV(eeprom_t *eeprom_ptr) {
     }
 
     temp_time = tm_from_timestamp(timestamp);
-    printf("%s/%d/%d %02d:%02d:%02d,%.2f\n", months[temp_time->tm_mon],
-           temp_time->tm_mday, temp_time->tm_year + 1900, temp_time->tm_hour,
-           temp_time->tm_min, temp_time->tm_sec, ((float)data / 100));
+    printf("%s-%d-%d %02d:%02d:%02d,%.2f\n", 
+           months[temp_time->tm_mon],
+           temp_time->tm_mday, 
+           temp_time->tm_year + 1900, 
+           temp_time->tm_hour,
+           temp_time->tm_min, 
+           temp_time->tm_sec, 
+           ((float)temp_temp / 100)//,
+           // ((float)temp_humi / 100)
+           );
   }
   printf("CSV END\n");
 }
@@ -374,6 +394,7 @@ void rtc_UART_alarm_callback(void) {
 
 void bmp_eeprom_set_high_temp(eeprom_t eeprom) {
   int now = make_current_timestamp();
+  // uint32_t helper = 0;
 
   bmp_readings.high_temperature = bmp_readings.temperature;
   bmp_readings.high_temp_time = now;
@@ -388,7 +409,9 @@ void bmp_eeprom_set_high_temp(eeprom_t eeprom) {
   if (print_flag == PRINT_ON) {
     printf("\n\told high temp: %d\told time: %d\n\t"
            "new high temp: %d\tnew time: %d\n",
-           temp_temp, temp_time, bmp_readings.high_temperature,
+           temp_temp, 
+           temp_time, 
+           bmp_readings.high_temperature,
            bmp_readings.high_temp_time);
   }
 }
@@ -398,6 +421,7 @@ void bmp_eeprom_set_low_temp(eeprom_t eeprom) {
   // rtc_get_datetime(&t);
   // int now = approx_epoch(&t);
   int now = make_current_timestamp();
+  // uint32_t helper = 0;
 
   bmp_readings.low_temperature = bmp_readings.temperature;
   bmp_readings.low_temp_time = now;
@@ -448,6 +472,7 @@ int64_t bmp_take_readings_callback(alarm_id_t id, void *arg) {
  * */
 int64_t bmp_reading_to_eeprom(alarm_id_t id, void *usr_data) {
   int now = make_current_timestamp();
+  // uint32_t helper = 0x0000;
   if (print_flag == PRINT_ON) {
     printf("current temp to EEPROM: %d to address %X\n",
            bmp_readings.temperature, eeprom.current_address);
@@ -497,6 +522,7 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
   datetime_t t = {0};
   rtc_get_datetime(&t);
 
+  float temporary_low;
   struct tm *temp_time;
   time_t temp_time_t;
   sprintf(buf, "%02d:%02d:%02d", t.hour, t.min, t.sec);
@@ -529,16 +555,23 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
     }
     break;
   case 3:
-    sprintf(buf, "low:  %.2fC", bmp_readings.low_temperature / 100.f);
+    temporary_low = (float)bmp_readings.low_temperature / 100.0;
+    sprintf(buf, "low:  %.2fC", temporary_low);
     // temp_time_t = (time_t)(bmp_readings.low_temp_time -
     //                        MOUNTAIN_STANDARD_OFFSET +
     //                        DAYLIGHT_SAVINGS_OFFSET);
     // temp_time = localtime(&temp_time_t);
     temp_time = tm_from_timestamp(bmp_readings.low_temp_time);
-    sprintf(uart_buf, "%s\tfrom %d seconds ago, at %2d:%02d, %s %d %d", buf,
-            (approx_epoch(&t) - bmp_readings.low_temp_time), temp_time->tm_hour,
-            temp_time->tm_min, months[temp_time->tm_mon], temp_time->tm_mday,
-            temp_time->tm_year + 1900);
+    // sprintf(uart_buf, 
+    //         "%s\tfrom %d seconds ago, at %2d:%02d, %s %d %d", 
+    //         buf,
+    //         (approx_epoch(&t) - bmp_readings.low_temp_time), 
+    //         temp_time->tm_hour,
+    //         temp_time->tm_min, 
+    //         months[temp_time->tm_mon], 
+    //         temp_time->tm_mday,
+    //         temp_time->tm_year + 1900);
+    sprintf(uart_buf, "[low]: %s\t<---\n", buf);
     _scale = 1;
     if (_count >= _state_swap) {
       _state++;
@@ -552,10 +585,15 @@ int64_t ssd1306_rtc_generic_callback(alarm_id_t id, void *arg) {
     //                        DAYLIGHT_SAVINGS_OFFSET);
     // temp_time = localtime(&temp_time_t);
     temp_time = tm_from_timestamp(bmp_readings.high_temp_time);
-    sprintf(uart_buf, "%s\tfrom %d seconds ago, at %2d:%02d, %s %d %d", buf,
+    sprintf(uart_buf, 
+            "%s\tfrom %d seconds ago, at %2d:%02d, %s %d %d", 
+            buf,
             (approx_epoch(&t) - bmp_readings.high_temp_time),
-            temp_time->tm_hour, temp_time->tm_min, months[temp_time->tm_mon],
-            temp_time->tm_mday, temp_time->tm_year + 1900);
+            temp_time->tm_hour, 
+            temp_time->tm_min, 
+            months[temp_time->tm_mon],
+            temp_time->tm_mday, 
+            temp_time->tm_year + 1900);
     _scale = 1;
     if (_count >= _state_swap) {
       _state++;

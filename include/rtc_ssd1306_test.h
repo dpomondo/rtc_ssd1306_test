@@ -14,7 +14,7 @@
 #include "ssd1306.h"
 // #include "ntp_request.h"
 // #include "ssd1306.h"
-#include "libraries/pico-ssd1306/example/acme_5_outlines_font.h"
+#include "pico-ssd1306/example/acme_5_outlines_font.h"
 #include <stdint.h>
 
 #include "include/credentials.h"
@@ -49,16 +49,16 @@ struct temperature_struct
     int32_t raw_temperature;
     int32_t raw_pressure;
     int32_t temperature; 
-    int32_t pressure; 
+    uint32_t pressure; 
     int32_t high_temperature;
     int32_t high_temp_time;
     int32_t low_temperature;
     int32_t low_temp_time;
-    int32_t low_5_min_temp;
-    int32_t low_5_min_time;
-    int32_t high_5_min_temp;
-    int32_t high_5_min_time;
-
+    uint16_t humidity;
+    // int32_t low_5_min_temp;
+    // int32_t low_5_min_time;
+    // int32_t high_5_min_temp;
+    // int32_t high_5_min_time;
 };
 
 // I2C defines

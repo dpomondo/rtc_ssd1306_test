@@ -23,3 +23,5 @@ rtc_ssd1306_test
     ├── CMakeLists.txt
     └── rtc_ssd1306_test.c
 ```
+
+ ```picocom -b 115200 /dev/ttyUSB0```
