@@ -1,6 +1,11 @@
 #! /bin/bash
 # we need to invoke bash to run this, as regular old POSIX shell has no arrays
 
+# to get this where we need to go:
+#       cd build/
+#       cp ${PERSONAL_PICO_PROJECTS}/shared/open.sh .
+# 
+
 # shopt turns on a shell option, nullglob ensures that if globbing returns
 # nothing, the array won't contain the `*.elf` pattern itself
 shopt -s nullglob
@@ -24,8 +29,8 @@ then
         exit 1
     elif [ ${#elf_files[@]} -eq 1 ]
     then
+        program=${elf_files[0]} # works best if we do this in the right order
         echo "Warn: no file specified, defaulting to only valid available file: ${program}"
-        program=${elf_files[0]}
     elif [ ${#elf_files[@]} -eq 0 ]
     then
         echo "ERROR: No appropriate files available"
